@@ -23,6 +23,16 @@ if (
 
 List<Code> codes = [new Code { CodeValue = "123" }];
 
+Task task = Task.Run(async () =>
+{
+    while (true)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(30));
+        DateTime now = DateTime.UtcNow;
+        _ = codes.RemoveAll(c => c.ExpiryTime < now);
+    }
+});
+
 app.MapPost(
     "/api/code",
     (CodeRequest codeRequest) =>
@@ -43,9 +53,18 @@ app.MapGet(
     (string code) =>
     {
         Code? codeObj = codes.Find(c => c.CodeValue == code);
-        return codeObj == null ? Results.NotFound()
-            : string.IsNullOrEmpty(codeObj.Token) ? Results.NoContent()
-            : Results.Ok(codeObj.Token);
+        if (codeObj == null)
+        {
+            return Results.NotFound();
+        }
+
+        if (codeObj.Token == string.Empty)
+        {
+            return Results.NoContent();
+        }
+
+        _ = codes.Remove(codeObj);
+        return Results.Ok(codeObj.Token);
     }
 );
 
